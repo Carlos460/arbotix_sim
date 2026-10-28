@@ -1,0 +1,36 @@
+# CMake out-of-source build directory
+/build/
+
+# CMake files left by an in-source build (cmake -S . -B .)
+/CMakeCache.txt
+/CMakeFiles/
+/Makefile
+/cmake_install.cmake
+/compile_commands.json
+
+# clangd index
+.cache/
+
+# Arduino / avr-gcc firmware outputs (arduino-cli --export-binaries)
+sketch/**/build/
+*.elf
+*.hex
+*.eep
+*.lst
+*.map
+*.o
+
+# ROS 2 colcon workspace outputs
+ros2_bridge/build/
+ros2_bridge/install/
+ros2_bridge/log/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
