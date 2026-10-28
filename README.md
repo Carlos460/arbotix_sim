@@ -1,15 +1,14 @@
 # arbotix-sim
-A simulator for the ArbotiX-M robot controller board. It runs the real
-firmware on your computer, emulating the board's chip and servos, so you can
-develop and test robot code without the physical hardware.
+A simulator for the ArbotiX-M board. Load and run firmware on your computer to
+emulate the board's chip (simavr) and servos. Develop and test robot code without the physical hardware.
 
 ## Dear ImGui submodule
 
 The GUI depends on Dear ImGui, included as a git submodule:
 
 ```sh
-git clone --recurse-submodules <this repo's URL>
-# or, if you already cloned it:
+git clone --recurse-submodules <this_repo_url>
+# or, if you already cloned the this repo:
 git submodule update --init
 ```
 
@@ -23,10 +22,10 @@ sudo apt install build-essential cmake pkg-config gcc-avr avr-libc \
     libglfw3-dev libgl-dev
 ```
 
-**macOS:**
+**MacOS:**
 
-`simavr` and `avr-gcc` aren't in Homebrew core; they're in the `osx-cross/avr` tap
-after installing tap, you'll need to add trust by `brew trust osx-cross/avr`:
+For MacOS`simavr` and `avr-gcc` are in the `osx-cross/avr` tap.
+After installing you'll need to add trust by `brew trust osx-cross/avr`:
 
 ```sh
 brew tap osx-cross/avr
@@ -45,13 +44,14 @@ cmake --build build
 
 ```sh
 ./build/arbotix_gui <firmware.elf> --link /tmp/ttyArbotiX0
-# in another terminal, connect to it like a real serial port:
+# open a serial connection to communicate with the sim like a real serial port:
 python3 -m serial.tools.miniterm /tmp/ttyArbotiX0 38400
 ```
 
 `<firmware.elf>` is the compiled firmware you want to run. See
-[`sketch/`](sketch/) for a minimal test firmware and how to build it. Other
-options:
+[`sketch/`](sketch/) for a hexapod test firmware and how to build it.
+
+Other options:
 
 | Flag          | Default             | What it does                               |
 | ------------- | ------------------- | ------------------------------------------ |
@@ -63,4 +63,4 @@ options:
 The window shows each servo's position with a slider to move it. The
 simulation always runs at its own process in the background seperate from the GUI's process
 
-Also view bash directory for run scripts.
+Also view bash directory for run scripts with custom options.
