@@ -1,0 +1,284 @@
+<?xml version="1.0" ?>
+<!-- file derived from: -->
+<!-- https://github.com/HumaRobotics/phantomx_description/blob/master/urdf/phantomx_urdf.xacro -->
+<!--
+  18 revolute joints, 3 per leg. Publish sensor_msgs/JointState on /joint_states
+  with these names, positions in RADIANS (0 = servo center, tick 512):
+
+    leg  coxa        femur          tibia
+    rf   j_c1_rf     j_thigh_rf     j_tibia_rf
+    rm   j_c1_rm     j_thigh_rm     j_tibia_rm
+    rr   j_c1_rr     j_thigh_rr     j_tibia_rr
+    lf   j_c1_lf     j_thigh_lf     j_tibia_lf
+    lm   j_c1_lm     j_thigh_lm     j_tibia_lm
+    lr   j_c1_lr     j_thigh_lr     j_tibia_lr
+
+  Generate the URDF:
+    xacro hexapod_urdf.xacro > hexapod.urdf
+    xacro hexapod_urdf.xacro use_meshes:=false > hexapod.urdf (boxes/cylinders only)
+-->
+<robot name="hexapod" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!-- STL meshes are in ./meshes. The default path is where
+     the Docker container mounts ros2_bridge/ (/ros2_ws). Elsewhere, pass
+     mesh_dir:=file://$PWD/meshes.
+
+     Set use_meshes:=false to draw simple boxes
+     and cylinders instead. -->
+<xacro:arg name="use_meshes" default="true" />
+<xacro:arg name="mesh_dir" default="file:///ros2_ws/meshes" />
+<xacro:property name="use_meshes" value="$(arg use_meshes)" />
+<xacro:property name="mesh_dir" value="$(arg mesh_dir)" />
+
+<xacro:property name="connect_offset" value="0.02633" />
+<xacro:property name="coxa_length" value="0.054" />
+<xacro:property name="thigh_offset_y" value="-0.0645" />
+<xacro:property name="thigh_offset_z" value="-0.0145" />
+<xacro:property name="tibia_length" value="0.16" />
+
+<!-- AX-12A range: ticks 0..1023 over 300 degrees -->
+<xacro:property name="servo_limit" value="2.6179939" />
+<xacro:property name="servo_effort" value="1.5" />
+<xacro:property name="servo_velocity" value="5.6548668" />
+
+<!-- Gazebo position controller gains (Nm/rad). Starting values, tune in sim. -->
+<xacro:property name="servo_p_gain" value="10.0" />
+<xacro:property name="servo_d_gain" value="0.0" />
+<xacro:property name="servo_damping" value="0.1" />
+
+<material name="Grey">
+  <color rgba="0.20 0.20 0.20 1.0"/>
+</material>
+<material name="LightGrey">
+  <color rgba="0.60 0.60 0.60 1.0"/>
+</material>
+
+
+<xacro:macro name="box_inertial" params="mass x y z *origin">
+  <inertial>
+    <xacro:insert_block name="origin" />
+    <mass value="${mass}"/>
+    <inertia ixx="${mass * (y*y + z*z) / 12}" ixy="0" ixz="0"
+             iyy="${mass * (x*x + z*z) / 12}" iyz="0"
+             izz="${mass * (x*x + y*y) / 12}" />
+  </inertial>
+</xacro:macro>
+
+<!-- Draws the PhantomX mesh when use_meshes is true, otherwise the primitive. -->
+<xacro:macro name="part_geometry" params="mesh *primitive">
+  <geometry>
+    <xacro:if value="${use_meshes}">
+      <mesh filename="${mesh_dir}/${mesh}.STL" scale="1 1 1"/>
+    </xacro:if>
+    <xacro:unless value="${use_meshes}">
+      <xacro:insert_block name="primitive" />
+    </xacro:unless>
+  </geometry>
+</xacro:macro>
+
+
+<!-- Gazebo plugin that holds a joint at the angle published on
+     /hexapod/<joint>/cmd_pos (bridged from ROS by config/gz_bridge.yaml). -->
+<xacro:macro name="servo_controller" params="joint">
+  <gazebo>
+    <plugin filename="gz-sim-joint-position-controller-system"
+            name="gz::sim::systems::JointPositionController">
+      <joint_name>${joint}</joint_name>
+      <topic>/hexapod/${joint}/cmd_pos</topic>
+      <p_gain>${servo_p_gain}</p_gain>
+      <i_gain>0</i_gain>
+      <d_gain>${servo_d_gain}</d_gain>
+      <cmd_max>${servo_effort}</cmd_max>
+      <cmd_min>${-servo_effort}</cmd_min>
+    </plugin>
+  </gazebo>
+</xacro:macro>
+
+
+<xacro:macro name="phantomx" params="parent *origin">
+
+  <joint name="j_phantomx_attachment" type="fixed">
+    <parent link="${parent}"/>
+    <child link="MP_BODY"/>
+    <xacro:insert_block name="origin" />
+  </joint>
+
+  <link name="MP_BODY">
+    <xacro:box_inertial mass="0.97559947" x="0.22" y="0.14" z="0.03">
+      <origin xyz="0 0 0" />
+    </xacro:box_inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <xacro:part_geometry mesh="body">
+        <box size="0.22 0.14 0.03" />
+      </xacro:part_geometry>
+      <material name="Grey"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <xacro:part_geometry mesh="body_coll">
+        <box size="0.22 0.14 0.03" />
+      </xacro:part_geometry>
+    </collision>
+  </link>
+
+  <xacro:leg_l xyz="0.1248 -0.06164  0.001116"  rpy="0 4.7123 0.7853981633974483" suffix="rf"/>
+  <xacro:leg_l xyz="0 -0.1034  0.001116"  rpy="0 4.7123 0" suffix="rm"/>
+  <xacro:leg_l xyz="-0.1248 -0.06164  0.001116"  rpy="0 4.7123 -0.7853981633974483" suffix="rr"/>
+
+  <xacro:leg_l xyz="0.1248 0.06164  0.001116"  rpy="0 4.7123 2.356194490192345" suffix="lf"/>
+  <xacro:leg_l xyz="0 0.1034  0.001116"  rpy="0 4.7123 3.14159" suffix="lm"/>
+  <xacro:leg_l xyz="-0.1248 0.06164  0.001116"  rpy="0 4.7123 3.9269908169872414" suffix="lr"/>
+
+</xacro:macro>
+
+
+<xacro:macro name="leg_l" params="xyz rpy suffix">
+
+  <link name="c1_${suffix}">
+    <xacro:box_inertial mass="0.024357719" x="0.03" y="${coxa_length}" z="0.03">
+      <origin xyz="0 -${connect_offset} 0" rpy="0 0 0" />
+    </xacro:box_inertial>
+    <visual>
+      <xacro:if value="${use_meshes}">
+        <origin xyz="0 -0.0252 0" rpy="0 0 0" />
+      </xacro:if>
+      <xacro:unless value="${use_meshes}">
+        <origin xyz="0 -${connect_offset} 0" rpy="0 0 0" />
+      </xacro:unless>
+      <xacro:part_geometry mesh="connect">
+        <box size="0.03 ${coxa_length} 0.03" />
+      </xacro:part_geometry>
+      <material name="LightGrey"/>
+    </visual>
+    <collision>
+      <origin xyz="0 -${connect_offset} 0" rpy="0 0 0" />
+      <xacro:part_geometry mesh="connect_coll">
+        <box size="0.03 ${coxa_length} 0.03" />
+      </xacro:part_geometry>
+    </collision>
+  </link>
+
+  <!-- Second bracket of the coxa. Rigid, so no visual in primitive mode. -->
+  <link name="c2_${suffix}">
+    <xacro:box_inertial mass="0.024357719" x="0.03" y="0.03" z="0.03">
+      <origin xyz="0 0 0" rpy="0 0 0" />
+    </xacro:box_inertial>
+    <xacro:if value="${use_meshes}">
+      <visual>
+        <origin xyz="0 -0.0252 0" rpy="0 0 0" />
+        <geometry>
+          <mesh filename="${mesh_dir}/connect.STL" scale="1 1 1"/>
+        </geometry>
+        <material name="Grey"/>
+      </visual>
+    </xacro:if>
+  </link>
+
+  <link name="thigh_${suffix}">
+    <xacro:box_inertial mass="0.024357719" x="0.025" y="${-thigh_offset_y}" z="0.035">
+      <origin xyz="0 ${thigh_offset_y / 2} 0" rpy="0 0 0" />
+    </xacro:box_inertial>
+    <visual>
+      <xacro:if value="${use_meshes}">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+      </xacro:if>
+      <xacro:unless value="${use_meshes}">
+        <origin xyz="0 ${thigh_offset_y / 2} 0" rpy="0 0 0" />
+      </xacro:unless>
+      <xacro:part_geometry mesh="thigh_l">
+        <box size="0.025 ${-thigh_offset_y} 0.035" />
+      </xacro:part_geometry>
+      <material name="Grey"/>
+    </visual>
+    <collision>
+      <xacro:if value="${use_meshes}">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+      </xacro:if>
+      <xacro:unless value="${use_meshes}">
+        <origin xyz="0 ${thigh_offset_y / 2} 0" rpy="0 0 0" />
+      </xacro:unless>
+      <xacro:part_geometry mesh="thigh_l_coll">
+        <box size="0.025 ${-thigh_offset_y} 0.035" />
+      </xacro:part_geometry>
+    </collision>
+  </link>
+
+  <!-- At zero the tibia hangs straight down, along +y of its own frame. -->
+  <link name="tibia_${suffix}">
+    <xacro:box_inertial mass="0.024357719" x="0.02" y="${tibia_length}" z="0.02">
+      <origin xyz="0 ${tibia_length / 2} 0" rpy="0 0 0" />
+    </xacro:box_inertial>
+    <visual>
+      <xacro:if value="${use_meshes}">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+      </xacro:if>
+      <xacro:unless value="${use_meshes}">
+        <origin xyz="0 ${tibia_length / 2} 0" rpy="${pi/2} 0 0" />
+      </xacro:unless>
+      <xacro:part_geometry mesh="tibia_l">
+        <cylinder radius="0.01" length="${tibia_length}" />
+      </xacro:part_geometry>
+      <material name="LightGrey"/>
+    </visual>
+    <collision>
+      <xacro:if value="${use_meshes}">
+        <origin xyz="0 0 0" rpy="0 0 0" />
+      </xacro:if>
+      <xacro:unless value="${use_meshes}">
+        <origin xyz="0 ${tibia_length / 2} 0" rpy="${pi/2} 0 0" />
+      </xacro:unless>
+      <xacro:part_geometry mesh="tibia_l_coll">
+        <cylinder radius="0.01" length="${tibia_length}" />
+      </xacro:part_geometry>
+    </collision>
+  </link>
+
+  <joint name="j_c1_${suffix}" type="revolute">
+    <parent link="MP_BODY"/>
+    <child link="c1_${suffix}"/>
+    <origin xyz="${xyz}" rpy="${rpy}" />
+    <axis xyz="1 0 0" />
+    <limit effort="${servo_effort}" velocity="${servo_velocity}" lower="${-servo_limit}" upper="${servo_limit}" />
+    <dynamics damping="${servo_damping}" />
+  </joint>
+
+  <joint name="j_c2_${suffix}" type="fixed">
+    <parent link="c1_${suffix}"/>
+    <child link="c2_${suffix}"/>
+    <origin xyz="0 -${coxa_length} 0" rpy="0 1.5704 3.14159" />
+  </joint>
+
+  <joint name="j_thigh_${suffix}" type="revolute">
+    <parent link="c2_${suffix}"/>
+    <child link="thigh_${suffix}"/>
+    <origin xyz="0 0 0" rpy=" 0 3.14159 3.14159" />
+    <axis xyz="1 0 0" />
+    <limit effort="${servo_effort}" velocity="${servo_velocity}" lower="${-servo_limit}" upper="${servo_limit}" />
+    <dynamics damping="${servo_damping}" />
+  </joint>
+
+  <joint name="j_tibia_${suffix}" type="revolute">
+    <parent link="thigh_${suffix}"/>
+    <child link="tibia_${suffix}"/>
+    <origin xyz="0 ${thigh_offset_y} ${thigh_offset_z}" rpy="-1.5707 0 3.14159" />
+    <axis xyz="1 0 0" />
+    <limit effort="${servo_effort}" velocity="${servo_velocity}" lower="${-servo_limit}" upper="${servo_limit}" />
+    <dynamics damping="${servo_damping}" />
+  </joint>
+
+  <xacro:servo_controller joint="j_c1_${suffix}" />
+  <xacro:servo_controller joint="j_thigh_${suffix}" />
+  <xacro:servo_controller joint="j_tibia_${suffix}" />
+
+</xacro:macro>
+
+
+<!-- base_link is at the body center. -->
+<link name="base_link" />
+
+<xacro:phantomx parent="base_link">
+  <origin xyz="0 0 0" rpy="0 0 0" />
+</xacro:phantomx>
+
+</robot>

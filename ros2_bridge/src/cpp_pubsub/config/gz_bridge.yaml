@@ -1,0 +1,110 @@
+# ros_gz_bridge config: forwards udp_joint_bridge's joint positions
+# commands to the JointPositionController plugins in hexapod_urdf.xacro.
+
+- ros_topic_name: "/hexapod/j_c1_rf/cmd_pos"
+  gz_topic_name: "/hexapod/j_c1_rf/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_c1_lf/cmd_pos"
+  gz_topic_name: "/hexapod/j_c1_lf/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_thigh_rf/cmd_pos"
+  gz_topic_name: "/hexapod/j_thigh_rf/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_thigh_lf/cmd_pos"
+  gz_topic_name: "/hexapod/j_thigh_lf/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_tibia_rf/cmd_pos"
+  gz_topic_name: "/hexapod/j_tibia_rf/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_tibia_lf/cmd_pos"
+  gz_topic_name: "/hexapod/j_tibia_lf/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_c1_rr/cmd_pos"
+  gz_topic_name: "/hexapod/j_c1_rr/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_c1_lr/cmd_pos"
+  gz_topic_name: "/hexapod/j_c1_lr/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_thigh_rr/cmd_pos"
+  gz_topic_name: "/hexapod/j_thigh_rr/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_thigh_lr/cmd_pos"
+  gz_topic_name: "/hexapod/j_thigh_lr/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_tibia_rr/cmd_pos"
+  gz_topic_name: "/hexapod/j_tibia_rr/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_tibia_lr/cmd_pos"
+  gz_topic_name: "/hexapod/j_tibia_lr/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_c1_rm/cmd_pos"
+  gz_topic_name: "/hexapod/j_c1_rm/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_c1_lm/cmd_pos"
+  gz_topic_name: "/hexapod/j_c1_lm/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_thigh_rm/cmd_pos"
+  gz_topic_name: "/hexapod/j_thigh_rm/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_thigh_lm/cmd_pos"
+  gz_topic_name: "/hexapod/j_thigh_lm/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_tibia_rm/cmd_pos"
+  gz_topic_name: "/hexapod/j_tibia_rm/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/hexapod/j_tibia_lm/cmd_pos"
+  gz_topic_name: "/hexapod/j_tibia_lm/cmd_pos"
+  ros_type_name: "std_msgs/msg/Float64"
+  gz_type_name: "gz.msgs.Double"
+  direction: ROS_TO_GZ
