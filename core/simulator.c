@@ -317,7 +317,7 @@ static int open_host_serial_port(const char *link_path) {
     else
       printf("[sim] UART0 (host) -> %s\n", slave_name);
   }
-  printf("[sim] connect: python3 -m serial.tools.miniterm %s 115200\n",
+  printf("[sim] connect: python3 -m serial.tools.miniterm %s [port]\n",
          link_path ? link_path : slave_name);
   return 0;
 }
