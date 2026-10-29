@@ -45,7 +45,7 @@ cmake --build build
 ```sh
 ./build/arbotix_gui <firmware.elf> --link /tmp/ttyArbotiX0
 # open a serial connection to communicate with the sim like a real serial port:
-python3 -m serial.tools.miniterm /tmp/ttyArbotiX0 38400
+python3 -m serial.tools.miniterm /tmp/ttyArbotiX0 [port]
 ```
 
 `<firmware.elf>` is the compiled firmware you want to run. See
@@ -57,7 +57,7 @@ Other options:
 | ------------- | ------------------- | ------------------------------------------ |
 | `--link PATH` | `/tmp/ttyArbotiX0`  | Path to the virtual serial port            |
 | `--ipc PATH`  | `/tmp/arbotix.sock` | Socket that streams live servo state       |
-| `--servo ID`  | IDs 1 to 24         | Add a virtual servo (repeat for each one)  |
+| `--servo ID`  | IDs 1 to 5          | Add a virtual servo (repeat for each one)  |
 | `-v`          | off                 | Print detailed traffic logs                |
 
 The window shows each servo's position with a slider to move it. The
