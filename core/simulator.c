@@ -41,6 +41,8 @@
 #define HOST_SERIAL_POLL_PERIOD 0x800UL
 #define IPC_SERVICE_PERIOD 0x10000UL
 
+#define DEFAULT_F_CPU 16000000UL
+
 /* global state */
 static avr_t *g_avr;
 static int g_pty_master = -1;
@@ -289,8 +291,7 @@ static int load_firmware(const char *path) {
 
   avr_init(g_avr);
   avr_load_firmware(g_avr, &fw);
-  if (fw.frequency)
-    g_avr->frequency = fw.frequency;
+  g_avr->frequency = fw.frequency ? fw.frequency : DEFAULT_F_CPU;
 
   snprintf(g_mcu_name, sizeof g_mcu_name, "%s", mcu_name);
   printf("[sim] MCU=%s  F_CPU=%u Hz  firmware=%s\n", mcu_name, g_avr->frequency,
@@ -356,13 +357,25 @@ static void pump_host_serial_input(avr_irq_t *uart0_in) {
   if (g_uart_xoff)
     return;
 
-  uint8_t buf[64];
-  ssize_t count = read(g_pty_master, buf, sizeof buf);
-  for (ssize_t i = 0; i < count && !g_uart_xoff; i++) {
-    avr_raise_irq(uart0_in, buf[i]);
+  static uint8_t buf[64];
+  static ssize_t count = 0;
+  static ssize_t next = 0;
+
+  if (next >= count) {
+    count = read(g_pty_master, buf, sizeof buf);
+    next = 0;
+    if (count <= 0) {
+      count = 0;
+      return;
+    }
+  }
+
+  while (next < count && !g_uart_xoff) {
+    uint8_t byte = buf[next++];
+    avr_raise_irq(uart0_in, byte);
     if (g_verbose)
-      fprintf(stderr, "[host -> uart0] %02x %c\n", buf[i],
-              (buf[i] >= 32 && buf[i] < 127) ? buf[i] : '.');
+      fprintf(stderr, "[host -> uart0] %02x %c\n", byte,
+              (byte >= 32 && byte < 127) ? byte : '.');
   }
 }
 
