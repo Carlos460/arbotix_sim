@@ -13,6 +13,8 @@ This includes the hexapod_urdf.xacro and the /meshes directory.
 
 ## Run on Linux
 
+Install ROS 2 Jazzy [Doc link](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html)
+
 Requires ROS 2 Jazzy and these packages (Gazebo Harmonic comes with `ros-jazzy-ros-gz`):
 
 ```bash
@@ -20,6 +22,11 @@ sudo apt install ros-jazzy-ros-gz ros-jazzy-xacro ros-jazzy-robot-state-publishe
 ```
 
 From this directory:
+
+Make sure to source ROS 2 or add to .bashrc
+```
+source /opt/ros/jazzy/setup.bash
+```
 
 ```bash
 colcon build && source install/setup.bash
