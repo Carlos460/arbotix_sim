@@ -16,13 +16,20 @@ checks the battery voltage, prints a menu, then waits for a one-key command:
 
 ## Compile
 
-Uses the same [MightyCore setup](../README.md#prerequisites). From this
-directory:
+Uses the MightyCore to compile firmware:
 
 ```sh
 arduino-cli compile \
   --fqbn MightyCore:avr:644:variant=modelP,pinout=standard,clock=16MHz_external,bootloader=no_bootloader \
   --export-binaries .
+```
+
+## Prerequisites
+
+MightyCore installation
+
+```
+arduino-cli core install MightyCore:avr --additional-urls https://mcudude.github.io/MightyCore/package_MCUdude_MightyCore_index.json
 ```
 
 ## Run
