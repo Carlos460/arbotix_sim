@@ -64,6 +64,14 @@ To see Gazebo, open http://localhost:6080/vnc.html and click **Connect**.
 
 Stop and remove the container with `docker rm -f ros2_ws_dev`.
 
+## Use RViz2
+
+With the launch file running, start `rviz2`, then:
+
+1. **Global Options > Fixed Frame**: `base_link`
+2. **Add > RobotModel**, set **Description Topic** to `/robot_description`
+3. Optional: **Add > TF** to show the joint frames
+
 ## Joint data format
 
 Each UDP packet holds one or more 8-byte records:
@@ -75,16 +83,16 @@ struct joint_packet {
 };
 ```
 
-Servo IDs follow the standard PhantomX layout:
+Servo IDs follow the Interbotix hexapod layout:
 
 | Leg          | Coxa | Femur | Tibia |
 | ------------ | ---- | ----- | ----- |
-| right front  | 1    | 3     | 5     |
-| left front   | 2    | 4     | 6     |
-| right rear   | 7    | 9     | 11    |
-| left rear    | 8    | 10    | 12    |
-| right middle | 13   | 15    | 17    |
-| left middle  | 14   | 16    | 18    |
+| left front   | 1    | 3     | 5     |
+| right front  | 2    | 4     | 6     |
+| left rear    | 7    | 9     | 11    |
+| right rear   | 8    | 10    | 12    |
+| left middle  | 13   | 15    | 17    |
+| right middle | 14   | 16    | 18    |
 
 `udp_joint_bridge` settings, passed with `--ros-args -p name:=value`:
 
@@ -95,6 +103,7 @@ Servo IDs follow the standard PhantomX layout:
 | `publish_rate_hz` | `50.0`     | How often joint angles are sent to Gazebo           |
 | `joint_names`     | table above | Joint name for each servo ID, in ID order          |
 | `joint_signs`     | all `1.0`  | Set an entry to `-1.0` to reverse that joint        |
+| `joint_offsets`   | all `0.0`  | Radians added to each joint after the sign          |
 
 ## Test without the simulator
 
