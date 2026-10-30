@@ -33,18 +33,19 @@ struct joint_packet {
 };
 static_assert(sizeof(joint_packet) == 8, "joint_packet must be 8 bytes");
 
-// Servo ID -> URDF joint name. Index 0 is servo ID 1. Default is the standard
-// PhantomX ArbotiX ID layout. override with the joint_names parameter.
+// Servo ID -> URDF joint name. Index 0 is servo ID 1. Default is the
+// Interbotix hexapod layout (odd IDs on the left). override with the
+// joint_names parameter.
 static const std::vector<std::string> kDefaultJointNames = {
-  "j_c1_rf",    "j_c1_lf",    // 1, 2
-  "j_thigh_rf", "j_thigh_lf", // 3, 4
-  "j_tibia_rf", "j_tibia_lf", // 5, 6
-  "j_c1_rr",    "j_c1_lr",    // 7, 8
-  "j_thigh_rr", "j_thigh_lr", // 9, 10
-  "j_tibia_rr", "j_tibia_lr", // 11, 12
-  "j_c1_rm",    "j_c1_lm",    // 13, 14
-  "j_thigh_rm", "j_thigh_lm", // 15, 16
-  "j_tibia_rm", "j_tibia_lm", // 17, 18
+  "j_c1_lf",    "j_c1_rf",    // 1, 2
+  "j_thigh_lf", "j_thigh_rf", // 3, 4
+  "j_tibia_lf", "j_tibia_rf", // 5, 6
+  "j_c1_lr",    "j_c1_rr",    // 7, 8
+  "j_thigh_lr", "j_thigh_rr", // 9, 10
+  "j_tibia_lr", "j_tibia_rr", // 11, 12
+  "j_c1_lm",    "j_c1_rm",    // 13, 14
+  "j_thigh_lm", "j_thigh_rm", // 15, 16
+  "j_tibia_lm", "j_tibia_rm", // 17, 18
 };
 
 class UdpJointBridge : public rclcpp::Node
@@ -65,6 +66,12 @@ public:
 
     if (signs_.size() != joint_names_.size()) {
       throw std::invalid_argument("joint_signs must have one entry per joint_names entry");
+    }
+    // Radians added after the sign, for joints whose URDF zero isn't servo center.
+    offsets_ = declare_parameter<std::vector<double>>(
+      "joint_offsets", std::vector<double>(joint_names_.size(), 0.0));
+    if (offsets_.size() != joint_names_.size()) {
+      throw std::invalid_argument("joint_offsets must have one entry per joint_names entry");
     }
     positions_.assign(joint_names_.size(), 0.0);
 
@@ -137,7 +144,7 @@ private:
           RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "unknown joint_id %d", id);
           continue;
         }
-        positions_[id - 1] = signs_[id - 1] * buf[i].joint_position;
+        positions_[id - 1] = signs_[id - 1] * buf[i].joint_position + offsets_[id - 1];
       }
     }
   }
@@ -160,6 +167,7 @@ private:
   int socket_fd_ = -1;
   std::vector<std::string> joint_names_;
   std::vector<double> signs_;
+  std::vector<double> offsets_;
   std::vector<double> positions_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
   std::vector<rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr> cmd_pubs_;
