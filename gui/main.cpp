@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -140,6 +141,24 @@ sockaddr_in create_dst() {
   return dst;
 }
 
+std::vector<uint8_t> build_packet(const sim_snapshot_t &snap) {
+  std::vector<uint8_t> packet;
+  packet.reserve(18 * 8);
+
+  for (int i = 0; i < snap.servo_count; i++) {
+    const sim_servo_snapshot_t &servo = snap.servos[i];
+    int32_t joint_id = servo.id;
+    float angle = servo.present_radians;
+
+    uint8_t buf[8];
+    std::memcpy(buf, &joint_id, sizeof(int32_t));
+    std::memcpy(buf + 4, &angle, sizeof(float));
+    packet.insert(packet.end(), buf, buf + 8);
+  }
+
+  return packet;
+}
+
 /* end ros helper functions */
 
 int main(int argc, char **argv) {
@@ -195,16 +214,14 @@ int main(int argc, char **argv) {
   ImGui_ImplOpenGL3_Init(glsl_version);
 
   // ros setup
-  struct command_packet {
-    double angle_rad;
+  struct joint_packet {
+    int32_t joint_id;
+    float joint_position;
   };
 
   bool is_ros_toggle = false;
-  int adapter_socket = 0;
+  int adapter_socket = -1;
   sockaddr_in dst;
-
-  command_packet pck{0.5};
-
   // ros setup end
 
   while (!glfwWindowShouldClose(window)) {
@@ -232,19 +249,23 @@ int main(int argc, char **argv) {
     // ImGui both reders and handles the click here:
     // handle ros2 bridge here
 
-    if (ImGui::Button("Connect to ROS2")) {
+    if (ImGui::Button(is_ros_toggle ? "Disconnected from ROS2"
+                                    : "Connect to ROS2")) {
       is_ros_toggle = !is_ros_toggle;
       if (is_ros_toggle) {
         adapter_socket = create_socket();
         dst = create_dst();
       } else {
         close(adapter_socket);
+        adapter_socket = -1;
       }
     }
 
     if (is_ros_toggle) {
       ImGui::Text("sending data...");
-      sendto(adapter_socket, &pck, sizeof(pck), 0, (sockaddr *)&dst,
+      std::vector<uint8_t> packet = build_packet(snap);
+
+      sendto(adapter_socket, packet.data(), packet.size(), 0, (sockaddr *)&dst,
              sizeof(dst));
     }
 
