@@ -6,7 +6,10 @@
  *
  * */
 
+#include <algorithm>
+#include <array>
 #include <cfloat>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -124,6 +127,139 @@ void draw_servo_table(const sim_snapshot_t &snap) {
   ImGui::EndTable();
 }
 
+/* commander remote */
+
+// ArbotiX Commander remote state. Packets go to the firmware's Serial, the
+// same bytes the XBee on the real robot would deliver.
+struct Commander {
+  bool enabled = false;
+  int walk_v = 0; // left stick
+  int walk_h = 0;
+  int look_v = 0; // right stick
+  int look_h = 0;
+  uint8_t buttons = 0;
+  uint8_t clicked = 0; // buttons clicked since the last packet
+  double last_send_time = 0.0;
+  std::array<uint8_t, 8> last_packet{};
+};
+
+struct CommanderButton {
+  const char *label;
+  uint8_t bit;
+};
+
+// Bits from the ArbotiX Commander library (Commander.h).
+constexpr CommanderButton kCommanderButtons[] = {
+    {"R1", 0x01}, {"R2", 0x02}, {"R3", 0x04}, {"L4", 0x08},
+    {"L5", 0x10}, {"L6", 0x20}, {"RT", 0x40}, {"LT", 0x80},
+};
+
+constexpr int kStickRange = 125; // Commander range
+constexpr float kStickSize = 120.0f;
+constexpr double kCommanderPeriod = 1.0 / 30.0;
+
+// Maps -1-1 to a stick value.
+int to_stick(float unit) {
+  int value = static_cast<int>(std::lround(unit * kStickRange));
+  return std::clamp(value, -kStickRange, kStickRange);
+}
+
+// Square joystick pad. Drag it with the mouse or hold the keys.
+// joysticks springs back to center when released.
+void draw_joystick(const char *id, int &vertical, int &horizontal, ImGuiKey up,
+                   ImGuiKey down, ImGuiKey left, ImGuiKey right) {
+  ImVec2 origin = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton(id, ImVec2(kStickSize, kStickSize));
+
+  if (ImGui::IsItemActive()) {
+    ImVec2 mouse = ImGui::GetIO().MousePos;
+    horizontal = to_stick((mouse.x - origin.x) / kStickSize * 2 - 1);
+    vertical = to_stick(1 - (mouse.y - origin.y) / kStickSize * 2);
+  } else {
+    horizontal =
+        kStickRange * (ImGui::IsKeyDown(right) - ImGui::IsKeyDown(left));
+    vertical = kStickRange * (ImGui::IsKeyDown(up) - ImGui::IsKeyDown(down));
+  }
+
+  float half = kStickSize / 2;
+  ImVec2 corner(origin.x + kStickSize, origin.y + kStickSize);
+  ImVec2 dot(origin.x + half + horizontal * half / kStickRange,
+             origin.y + half - vertical * half / kStickRange);
+
+  ImDrawList *draw = ImGui::GetWindowDrawList();
+  draw->AddRect(origin, corner, IM_COL32(150, 150, 150, 255));
+  draw->AddCircleFilled(dot, 8.0f, IM_COL32(80, 160, 255, 255));
+}
+
+// Format: 0xFF, right V, right H, left V, left H, buttons, ext, checksum.
+// Stick values are centered on 128.
+std::array<uint8_t, 8> build_commander_packet(const Commander &cmd) {
+  std::array<uint8_t, 8> packet = {
+      0xFF,
+      static_cast<uint8_t>(cmd.look_v + 128),
+      static_cast<uint8_t>(cmd.look_h + 128),
+      static_cast<uint8_t>(cmd.walk_v + 128),
+      static_cast<uint8_t>(cmd.walk_h + 128),
+      cmd.buttons,
+      0, // ext
+      0, // checksum
+  };
+
+  int sum = 0;
+  for (int i = 1; i < 7; i++)
+    sum += packet[i];
+  packet[7] = static_cast<uint8_t>(255 - sum % 256);
+  return packet;
+}
+
+void draw_commander_panel(Commander &cmd) {
+  ImGui::Checkbox("Commander (send to Serial at 30 Hz)", &cmd.enabled);
+
+  if (ImGui::BeginTable("sticks", 2)) {
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted("Walk (W A S D)");
+    draw_joystick("##walk", cmd.walk_v, cmd.walk_h, ImGuiKey_W, ImGuiKey_S,
+                  ImGuiKey_A, ImGuiKey_D);
+    ImGui::Text("V %+4d  H %+4d", cmd.walk_v, cmd.walk_h);
+
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted("Look (arrow keys)");
+    draw_joystick("##look", cmd.look_v, cmd.look_h, ImGuiKey_UpArrow,
+                  ImGuiKey_DownArrow, ImGuiKey_LeftArrow, ImGuiKey_RightArrow);
+    ImGui::Text("V %+4d  H %+4d", cmd.look_v, cmd.look_h);
+
+    ImGui::EndTable();
+  }
+
+  // A button is set while held. A quick click is kept until the next packet
+  // so it isn't missed between sends.
+  uint8_t held = 0;
+  for (const CommanderButton &button : kCommanderButtons) {
+    if (&button != &kCommanderButtons[0])
+      ImGui::SameLine();
+    if (ImGui::Button(button.label))
+      cmd.clicked |= button.bit;
+    if (ImGui::IsItemActive())
+      held |= button.bit;
+  }
+  cmd.buttons = held | cmd.clicked;
+
+  const std::array<uint8_t, 8> &p = cmd.last_packet;
+  ImGui::Text("last packet: %02X %02X %02X %02X %02X %02X %02X %02X", p[0],
+              p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+}
+
+void send_commander_packet(Commander &cmd) {
+  double now = ImGui::GetTime();
+  if (!cmd.enabled || now - cmd.last_send_time < kCommanderPeriod)
+    return;
+
+  cmd.last_packet = build_commander_packet(cmd);
+  if (sim_send_serial(cmd.last_packet.data(), cmd.last_packet.size()))
+    cmd.clicked = 0;
+  cmd.last_send_time = now;
+}
+
 } // namespace
 
 /* ros helper functions */
@@ -224,6 +360,8 @@ int main(int argc, char **argv) {
   sockaddr_in dst;
   // ros setup end
 
+  Commander commander;
+
   while (!glfwWindowShouldClose(window)) {
     glfwPollEvents();
 
@@ -270,6 +408,11 @@ int main(int argc, char **argv) {
     }
 
     // end ros2 adapter
+
+    ImGui::Separator();
+    draw_commander_panel(commander);
+    send_commander_packet(commander);
+
     ImGui::Separator();
     draw_servo_table(snap);
 

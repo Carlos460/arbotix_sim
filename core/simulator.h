@@ -4,6 +4,7 @@
  * socket
  */
 #pragma once
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -49,6 +50,10 @@ void sim_get_snapshot(sim_snapshot_t *out);
 
 // Requests a new goal position (0-1023 ticks) for the given servo ID.
 void sim_set_goal_position(uint8_t servo_id, uint16_t position);
+
+// Queues bytes for the Serial (UART0).
+// Returns 1 if queued, 0 if the queue was too full to take all of them.
+int sim_send_serial(const uint8_t *data, size_t len);
 
 #ifdef __cplusplus
 }
