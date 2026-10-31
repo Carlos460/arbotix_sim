@@ -44,7 +44,7 @@ static const std::vector<std::string> kDefaultJointNames = {
   "j_tibia_lr", "j_tibia_rr", // 11, 12
   "j_c1_lm",    "j_c1_rm",    // 13, 14
   "j_thigh_lm", "j_thigh_rm", // 15, 16
-  "j_tibia_rm", "j_tibia_lm", // 17, 18
+  "j_tibia_lm", "j_tibia_rm", // 17, 18
 };
 
 class UdpJointBridge : public rclcpp::Node
