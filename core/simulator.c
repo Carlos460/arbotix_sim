@@ -281,6 +281,18 @@ static double now_seconds(void) {
     return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
 }
 
+/* disable uart stdio for both 1 and 0 */
+static void disable_uart_stdio(void) {
+    for (char u = '0'; u <= '1'; u++) {
+        uint32_t flags = 0;
+        if (avr_ioctl(g_avr, AVR_IOCTL_UART_GET_FLAGS(u), &flags) != 0)
+            continue; // skip if uart not in MCU
+
+        flags &= ~AVR_UART_FLAG_STDIO;
+        avr_ioctl(g_avr, AVR_IOCTL_UART_SET_FLAGS(u), &flags);
+    }
+}
+
 /* startup steps */
 
 // Loads the firmware ELF and creates the emulated MCU (g_avr).
@@ -482,6 +494,7 @@ int sim_run(const sim_config_t *config) {
     if (open_host_serial_port(config->link_path) != 0)
         return 1;
 
+    disable_uart_stdio();
     avr_irq_t *uart0_in = wire_uart0_irqs();
     setup_dynbus(config->servo_ids, config->servo_count);
 
