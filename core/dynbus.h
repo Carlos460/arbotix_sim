@@ -15,25 +15,25 @@ extern "C" {
 #define DYNBUS_BCAST_ID 0xFE // broadcast to all servos
 
 typedef struct {
-  // Servos keyed by ID
-  ax12_servo_t servos[DYNBUS_MAX_SERVOS];
-  int n_servos;
+    // Servos keyed by ID
+    ax12_servo_t servos[DYNBUS_MAX_SERVOS];
+    int n_servos;
 
-  // Instruction packet accumulation
-  uint8_t pkt[DYNBUS_MAX_PKT];
-  uint8_t pkt_len;
+    // Instruction packet accumulation
+    uint8_t pkt[DYNBUS_MAX_PKT];
+    uint8_t pkt_len;
 
-  // Response byte ring buffer, flushed into UART1 in XON hook.
-  uint8_t rsp_buf[128];
-  uint8_t rsp_r; // read index
-  uint8_t rsp_w; // write index
-  int xon;       // 1 = UART1 RXEN is active, safe to inject
+    // Response byte ring buffer, flushed into UART1 in XON hook.
+    uint8_t rsp_buf[128];
+    uint8_t rsp_r; // read index
+    uint8_t rsp_w; // write index
+    int xon;       // 1 = UART1 RXEN is active, safe to inject
 
-  avr_t *avr;
-  avr_irq_t *uart1_in; // UART1 INPUT IRQ to inject response bytes
+    avr_t *avr;
+    avr_irq_t *uart1_in; // UART1 INPUT IRQ to inject response bytes
 
-  int verbose;
-  int ipc_fd; // unix socket fd (-1 if not connected)
+    int verbose;
+    int ipc_fd; // unix socket fd (-1 if not connected)
 } dynbus_t;
 
 // attach the bus controller to avr. called after avr_init().

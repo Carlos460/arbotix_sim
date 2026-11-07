@@ -16,27 +16,27 @@ extern "C" {
 #define SIM_MAX_SERVOS 24
 
 typedef struct {
-  const char *firmware_path; // AVR ELF to load (required)
-  const char *link_path;     // stable symlink to the host serial PTY
-  const char *ipc_path;      // unix socket for servo state IPC
-  const uint8_t *servo_ids;  // servo IDs to create on the bus
-  int servo_count;
-  int verbose; // hexdump UART and Dynamixel-bus traffic
+    const char *firmware_path; // AVR ELF to load (required)
+    const char *link_path;     // stable symlink to the host serial PTY
+    const char *ipc_path;      // unix socket for servo state IPC
+    const uint8_t *servo_ids;  // servo IDs to create on the bus
+    int servo_count;
+    int verbose; // hexdump UART and Dynamixel-bus traffic
 } sim_config_t;
 
 typedef struct {
-  uint8_t id;
-  uint16_t present_position; // ticks, 0-1023
-  uint16_t goal_position;    // ticks, 0-1023
-  double present_radians;
-  int moving;
+    uint8_t id;
+    uint16_t present_position; // ticks, 0-1023
+    uint16_t goal_position;    // ticks, 0-1023
+    double present_radians;
+    int moving;
 } sim_servo_snapshot_t;
 
 typedef struct {
-  char mcu_name[64];
-  int servo_count;
-  sim_servo_snapshot_t servos[SIM_MAX_SERVOS];
-  int ipc_client_connected;
+    char mcu_name[64];
+    int servo_count;
+    sim_servo_snapshot_t servos[SIM_MAX_SERVOS];
+    int ipc_client_connected;
 } sim_snapshot_t;
 
 // Loads the firmware and runs.

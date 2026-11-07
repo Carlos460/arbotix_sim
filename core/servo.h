@@ -93,11 +93,11 @@ extern "C" {
 #define AX12_SPEED_DEFAULT 50 // normal speed
 
 typedef struct {
-  uint8_t ctrl[AX_CTRL_TABLE_SIZE]; // control table
-  uint8_t pending_pos_l;            // REG_WRITE buffered position L
-  uint8_t pending_pos_h;            // REG_WRITE buffered position H
-  uint8_t has_pending;              // 1 if REG_WRITE is waiting on ACTION
-  double pos_exact;                 // present position (fractional)
+    uint8_t ctrl[AX_CTRL_TABLE_SIZE]; // control table
+    uint8_t pending_pos_l;            // REG_WRITE buffered position L
+    uint8_t pending_pos_h;            // REG_WRITE buffered position H
+    uint8_t has_pending;              // 1 if REG_WRITE is waiting on ACTION
+    double pos_exact;                 // present position (fractional)
 } ax12_servo_t;
 
 // Initialize a servo with the given ID and center position.
@@ -111,7 +111,6 @@ int servo_process(ax12_servo_t *servo, uint8_t instruction,
                   const uint8_t *in_params, uint8_t in_np, uint8_t *out_params,
                   uint8_t *out_np_ptr);
 
-
 /* helper functions */
 // present position in radians (0 = center = 150°).
 double servo_pos_radians(const ax12_servo_t *servo);
@@ -121,13 +120,13 @@ void servo_set_goal_radians(ax12_servo_t *servo, double radians);
 
 // reg helpers
 static inline uint16_t servo_reg16(const ax12_servo_t *servo, uint8_t addr) {
-  return (uint16_t)servo->ctrl[addr] | ((uint16_t)servo->ctrl[addr + 1] << 8);
+    return (uint16_t)servo->ctrl[addr] | ((uint16_t)servo->ctrl[addr + 1] << 8);
 }
 
 static inline void servo_setreg16(ax12_servo_t *servo, uint8_t addr,
                                   uint16_t value) {
-  servo->ctrl[addr] = (uint8_t)(value & 0xFF);
-  servo->ctrl[addr + 1] = (uint8_t)(value >> 8);
+    servo->ctrl[addr] = (uint8_t)(value & 0xFF);
+    servo->ctrl[addr + 1] = (uint8_t)(value >> 8);
 }
 
 #ifdef __cplusplus
