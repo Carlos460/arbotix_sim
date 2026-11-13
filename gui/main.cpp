@@ -13,6 +13,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <libevdev/libevdev.h>
+#include <linux/input.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <thread>
@@ -27,6 +29,7 @@
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h>
 
+#include "ps_input.hpp"
 #include "simulator.h"
 
 namespace {
@@ -300,6 +303,26 @@ std::vector<uint8_t> build_packet(const sim_snapshot_t &snap) {
 /* end ros helper functions */
 
 int main(int argc, char **argv) {
+
+    /* attempt attach controller */
+    int fd;
+    int rc = 1;
+    struct libevdev *dev = find_device(&fd, &rc);
+
+    if (dev == NULL) {
+        std::fprintf(stderr, "error: controller device not found");
+        libevdev_free(dev);
+        close(fd);
+    } else {
+        std::printf("Input device name: %s\n", libevdev_get_name(dev));
+        // TODO:: add id value names matching the linux/input.h codes
+        /*
+         std::printf("Input device ID: bus %#x vendor %#x product %#x\n",
+                    libevdev_get_id_bustype(dev), libevdev_get_id_vendor(dev),
+                    libevdev_get_id_product(dev));
+        */
+    }
+
     CliOptions opts;
     if (!parse_args(argc, argv, opts)) {
         print_usage(argv[0]);
@@ -348,6 +371,9 @@ int main(int argc, char **argv) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::GetIO().IniFilename = nullptr;
+    ImFontConfig font_config;
+    font_config.SizePixels = 24.0f;
+    ImGui::GetIO().Fonts->AddFontDefault(&font_config);
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
@@ -366,6 +392,10 @@ int main(int argc, char **argv) {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        // handle controller events
+
+        // end handle controller events
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -386,6 +416,13 @@ int main(int argc, char **argv) {
                     snap.ipc_client_connected ? "connected" : "none");
         ImGui::Separator();
 
+        if (dev) {
+            ImGui::Text("Device connected");
+        } else {
+            ImGui::Text("No device connected");
+        }
+
+        ImGui::Separator();
         // ImGui both reders and handles the click here:
         // handle ros2 bridge here
 
@@ -433,6 +470,11 @@ int main(int argc, char **argv) {
     sim_request_stop();
     sim_thread.join();
 
+    // close controller device
+    libevdev_free(dev);
+    close(fd);
+
+    // close imgui
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

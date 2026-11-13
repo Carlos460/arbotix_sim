@@ -1,5 +1,6 @@
 # CMake out-of-source build directory
 /build/
+/build-debug/
 
 # CMake files left by an in-source build (cmake -S . -B .)
 /CMakeCache.txt
@@ -34,3 +35,4 @@ __pycache__/
 .idea/
 *.swp
 .DS_Store
+.gdb_history

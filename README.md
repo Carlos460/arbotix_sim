@@ -18,7 +18,7 @@ git submodule update --init
 
 ```sh
 sudo apt install build-essential cmake pkg-config gcc-avr avr-libc \
-    simavr libsimavr-dev libelf-dev python3-serial \
+    simavr libsimavr-dev libelf-dev python3-serial libevdev-dev \
     libglfw3-dev libgl-dev
 ```
 
@@ -38,6 +38,12 @@ This produces `arbotix_gui` and the `core` library it links against.
 ```sh
 cmake -S . -B build
 cmake --build build
+```
+
+debug options for gdb
+```
+cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-debug/ -j
 ```
 
 ## Run
