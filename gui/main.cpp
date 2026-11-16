@@ -13,8 +13,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <libevdev/libevdev.h>
-#include <linux/input.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <thread>
@@ -149,12 +147,21 @@ struct Commander {
 struct CommanderButton {
     const char *label;
     uint8_t bit;
+    PsButton ps_button; // PS5 button that presses it
+    const char *ps_label;
 };
 
 // Bits from the ArbotiX Commander library (Commander.h).
+// listed left to right as on the Commander with the PS5 button in that spot
 constexpr CommanderButton kCommanderButtons[] = {
-    {"R1", 0x01}, {"R2", 0x02}, {"R3", 0x04}, {"L4", 0x08},
-    {"L5", 0x10}, {"L6", 0x20}, {"RT", 0x40}, {"LT", 0x80},
+    {"LT", 0x80, PsButton::L1, "L1"},
+    {"L6", 0x20, PsButton::DpadLeft, "D-pad left"},
+    {"L5", 0x10, PsButton::DpadDown, "D-pad down"},
+    {"L4", 0x08, PsButton::DpadRight, "D-pad right"},
+    {"R1", 0x01, PsButton::Square, "Square"},
+    {"R2", 0x02, PsButton::Cross, "Cross"},
+    {"R3", 0x04, PsButton::Circle, "Circle"},
+    {"RT", 0x40, PsButton::R1, "R1"},
 };
 
 constexpr int kStickRange = 125; // Commander range
@@ -167,10 +174,11 @@ int to_stick(float unit) {
     return std::clamp(value, -kStickRange, kStickRange);
 }
 
-// Square joystick pad. Drag it with the mouse or hold the keys.
-// joysticks springs back to center when released.
+// Square joystick pad driven by the mouse or keys or PS5 stick
+// springs back to center when released
 void draw_joystick(const char *id, int &vertical, int &horizontal, ImGuiKey up,
-                   ImGuiKey down, ImGuiKey left, ImGuiKey right) {
+                   ImGuiKey down, ImGuiKey left, ImGuiKey right,
+                   PsStick ps_v, PsStick ps_h) {
     ImVec2 origin = ImGui::GetCursorScreenPos();
     ImGui::InvisibleButton(id, ImVec2(kStickSize, kStickSize));
 
@@ -183,6 +191,12 @@ void draw_joystick(const char *id, int &vertical, int &horizontal, ImGuiKey up,
             kStickRange * (ImGui::IsKeyDown(right) - ImGui::IsKeyDown(left));
         vertical =
             kStickRange * (ImGui::IsKeyDown(up) - ImGui::IsKeyDown(down));
+
+        // PS5 stick when no keys are held
+        if (horizontal == 0 && vertical == 0) {
+            horizontal = to_stick(ps_stick(ps_h));
+            vertical = to_stick(ps_stick(ps_v));
+        }
     }
 
     float half = kStickSize / 2;
@@ -218,19 +232,21 @@ std::array<uint8_t, 8> build_commander_packet(const Commander &cmd) {
 
 void draw_commander_panel(Commander &cmd) {
     ImGui::Checkbox("Commander (send to Serial at 30 Hz)", &cmd.enabled);
+    ImGui::Text("PS5 controller: %s",
+                ps_connected() ? "connected" : "not found");
 
     if (ImGui::BeginTable("sticks", 2)) {
         ImGui::TableNextColumn();
         ImGui::TextUnformatted("Walk (W A S D)");
         draw_joystick("##walk", cmd.walk_v, cmd.walk_h, ImGuiKey_W, ImGuiKey_S,
-                      ImGuiKey_A, ImGuiKey_D);
+                      ImGuiKey_A, ImGuiKey_D, PsStick::LeftY, PsStick::LeftX);
         ImGui::Text("V %+4d  H %+4d", cmd.walk_v, cmd.walk_h);
 
         ImGui::TableNextColumn();
         ImGui::TextUnformatted("Look (arrow keys)");
         draw_joystick("##look", cmd.look_v, cmd.look_h, ImGuiKey_UpArrow,
                       ImGuiKey_DownArrow, ImGuiKey_LeftArrow,
-                      ImGuiKey_RightArrow);
+                      ImGuiKey_RightArrow, PsStick::RightY, PsStick::RightX);
         ImGui::Text("V %+4d  H %+4d", cmd.look_v, cmd.look_h);
 
         ImGui::EndTable();
@@ -242,8 +258,11 @@ void draw_commander_panel(Commander &cmd) {
     for (const CommanderButton &button : kCommanderButtons) {
         if (&button != &kCommanderButtons[0])
             ImGui::SameLine();
-        if (ImGui::Button(button.label))
+        // PS5 presses are kept like clicks so short taps reach a packet
+        if (ImGui::Button(button.label) || ps_pressed(button.ps_button))
             cmd.clicked |= button.bit;
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("PS5 %s", button.ps_label);
         if (ImGui::IsItemActive())
             held |= button.bit;
     }
@@ -303,26 +322,6 @@ std::vector<uint8_t> build_packet(const sim_snapshot_t &snap) {
 /* end ros helper functions */
 
 int main(int argc, char **argv) {
-
-    /* attempt attach controller */
-    int fd;
-    int rc = 1;
-    struct libevdev *dev = find_device(&fd, &rc);
-
-    if (dev == NULL) {
-        std::fprintf(stderr, "error: controller device not found");
-        libevdev_free(dev);
-        close(fd);
-    } else {
-        std::printf("Input device name: %s\n", libevdev_get_name(dev));
-        // TODO:: add id value names matching the linux/input.h codes
-        /*
-         std::printf("Input device ID: bus %#x vendor %#x product %#x\n",
-                    libevdev_get_id_bustype(dev), libevdev_get_id_vendor(dev),
-                    libevdev_get_id_product(dev));
-        */
-    }
-
     CliOptions opts;
     if (!parse_args(argc, argv, opts)) {
         print_usage(argv[0]);
@@ -392,10 +391,7 @@ int main(int argc, char **argv) {
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-
-        // handle controller events
-
-        // end handle controller events
+        ps_poll();
 
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -414,14 +410,6 @@ int main(int argc, char **argv) {
         ImGui::Text("Host serial: %s", opts.link_path);
         ImGui::Text("IPC socket: %s (client %s)", opts.ipc_path,
                     snap.ipc_client_connected ? "connected" : "none");
-        ImGui::Separator();
-
-        if (dev) {
-            ImGui::Text("Device connected");
-        } else {
-            ImGui::Text("No device connected");
-        }
-
         ImGui::Separator();
         // ImGui both reders and handles the click here:
         // handle ros2 bridge here
@@ -470,9 +458,7 @@ int main(int argc, char **argv) {
     sim_request_stop();
     sim_thread.join();
 
-    // close controller device
-    libevdev_free(dev);
-    close(fd);
+    ps_close();
 
     // close imgui
     ImGui_ImplOpenGL3_Shutdown();
