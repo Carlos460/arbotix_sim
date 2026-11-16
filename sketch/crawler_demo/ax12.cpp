@@ -79,12 +79,7 @@ void setRX(int id) {
     asm("nop");
   PORTD &= 0xEF;
 #endif
-  // SIMULATOR PATCH: don't clear TXEN1 here. simavr's UART never re-raises
-  // UDRE1 once TXEN1 is toggled 0->1 again, so the next ax12write() would
-  // hang forever in its "while (bit_is_clear(UCSR1A, UDRE1))" wait. Only
-  // RXEN1/RXCIE1 switch the direction; TXEN1 stays on once setTX() first
-  // enables it. Real hardware doesn't need this -- revert it before
-  // flashing an actual ArbotiX board.
+  bitClear(UCSR1B, TXEN1);
   bitSet(UCSR1B, RXCIE1);
 #endif
   bitSet(UCSR1B, RXEN1);
