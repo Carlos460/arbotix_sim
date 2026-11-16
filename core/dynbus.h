@@ -11,7 +11,8 @@ extern "C" {
 #endif
 
 #define DYNBUS_MAX_SERVOS 24
-#define DYNBUS_MAX_PKT 64
+// FF FF ID LEN (4) + INSTR + PARAMS + CHECKSUM (LEN max 255) = 259 bytes
+#define DYNBUS_MAX_PKT 259 
 #define DYNBUS_BCAST_ID 0xFE // broadcast to all servos
 
 typedef struct {
@@ -21,7 +22,7 @@ typedef struct {
 
     // Instruction packet accumulation
     uint8_t pkt[DYNBUS_MAX_PKT];
-    uint8_t pkt_len;
+    uint16_t pkt_len;
 
     // Response byte ring buffer, flushed into UART1 in XON hook.
     uint8_t rsp_buf[128];

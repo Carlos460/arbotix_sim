@@ -186,7 +186,7 @@ static void uart1_out_hook(struct avr_irq_t *irq, uint32_t value, void *param) {
         bus->pkt[bus->pkt_len++] = byte;
 
     // Complete when pkt_len == LEN+4 (header:2 + id:1 + len:1 + data:LEN)
-    if (bus->pkt_len >= 4 && bus->pkt_len >= (uint8_t)(bus->pkt[3] + 4u)) {
+    if (bus->pkt_len >= 4 && bus->pkt_len >= bus->pkt[3] + 4u) {
         process_packet(bus);
         bus->pkt_len = 0;
     }
