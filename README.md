@@ -2,9 +2,9 @@
 A simulator for the ArbotiX-M board. Load and run firmware on your computer to
 emulate the board's chip (simavr) and servos. Develop and test robot code without the physical hardware.
 
-## Dear ImGui submodule
+## Submodules
 
-The GUI depends on Dear ImGui, included as a git submodule:
+Dear ImGui and simavr are included as a git submodule:
 
 ```sh
 git clone --recurse-submodules <this_repo_url>
@@ -18,18 +18,18 @@ git submodule update --init
 
 ```sh
 sudo apt install build-essential cmake pkg-config gcc-avr avr-libc \
-    simavr libsimavr-dev libelf-dev python3-serial libevdev-dev \
+    libelf-dev python3-serial libevdev-dev \
     libglfw3-dev libgl-dev
 ```
 
 **MacOS:**
 
-For MacOS`simavr` and `avr-gcc` are in the `osx-cross/avr` tap.
+For MacOS `avr-gcc` is in the `osx-cross/avr` tap.
 After installing you'll need to add trust by `brew trust osx-cross/avr`:
 
 ```sh
 brew tap osx-cross/avr
-brew install cmake pkg-config libelf glfw avr-gcc simavr
+brew install cmake pkg-config libelf glfw avr-gcc
 pip3 install pyserial
 ```
 

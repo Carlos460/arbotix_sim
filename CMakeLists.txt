@@ -8,27 +8,51 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SIMAVR REQUIRED simavr)
 find_package(Threads REQUIRED)
 
-if(APPLE)
-    # simavr's pkg-config file links against -lelf but doesn't carry a path
-    # to wherever Homebrew put libelf (a separate package), so that -lelf
-    # reference can't resolve on its own. Ask Homebrew for the real
-    # directory and add it to the link search path.
-    find_program(HOMEBREW_EXECUTABLE brew)
-    if(HOMEBREW_EXECUTABLE)
-        execute_process(
-            COMMAND ${HOMEBREW_EXECUTABLE} --prefix libelf
-            OUTPUT_VARIABLE HOMEBREW_LIBELF_PREFIX
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            ERROR_QUIET
-        )
-    endif()
-    if(NOT HOMEBREW_LIBELF_PREFIX)
-        message(FATAL_ERROR "libelf not found. Install it with: brew install libelf")
-    endif()
+# simavr v1.8 from third_party/simavr.
+# simavr uses its own Makefile, so CMake runs make and links the result.
+pkg_check_modules(LIBELF REQUIRED IMPORTED_TARGET libelf)
+find_program(MAKE_EXECUTABLE NAMES gmake make REQUIRED)
+include(ExternalProject)
+include(ProcessorCount)
+ProcessorCount(NPROC)
+
+set(SIMAVR_DIR ${CMAKE_SOURCE_DIR}/third_party/simavr/simavr)
+if(NOT EXISTS ${SIMAVR_DIR}/Makefile)
+    message(FATAL_ERROR "third_party/simavr is empty. Run: git submodule update --init")
 endif()
+
+# simavr puts the library in obj-<machine name>/ e.g. obj-x86_64-linux-gnu/
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -dumpmachine
+    OUTPUT_VARIABLE SIMAVR_TRIPLE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+set(SIMAVR_LIB ${SIMAVR_DIR}/obj-${SIMAVR_TRIPLE}/libsimavr.a)
+set(SIMAVR_MAKE ${MAKE_EXECUTABLE} -C ${SIMAVR_DIR} RELEASE=1 CC=${CMAKE_C_COMPILER})
+
+ExternalProject_Add(simavr_build
+    SOURCE_DIR        ${SIMAVR_DIR}
+    CONFIGURE_COMMAND ""
+    # "config" must run first: it creates headers the library build needs
+    BUILD_COMMAND     ${SIMAVR_MAKE} config
+    COMMAND           ${SIMAVR_MAKE} -j${NPROC} libsimavr
+    BUILD_IN_SOURCE   1
+    BUILD_ALWAYS      1   # make only rebuilds what changed
+    INSTALL_COMMAND   ""
+    BUILD_BYPRODUCTS  ${SIMAVR_LIB}
+)
+
+add_library(simavr STATIC IMPORTED)
+set_target_properties(simavr PROPERTIES IMPORTED_LOCATION ${SIMAVR_LIB})
+target_include_directories(simavr INTERFACE ${SIMAVR_DIR}/sim)
+target_link_libraries(simavr INTERFACE PkgConfig::LIBELF)
+# simavr uses libdwarf when it's installed, so link it too
+if(EXISTS /usr/include/libdwarf/libdwarf.h)
+    target_link_libraries(simavr INTERFACE dwarf)
+endif()
+add_dependencies(simavr simavr_build)
 
 # Arbotix Core Simulator
 add_library(core STATIC
@@ -36,25 +60,18 @@ add_library(core STATIC
     core/dynbus.c
     core/servo.c
 )
-target_include_directories(core PUBLIC
-    ${SIMAVR_INCLUDE_DIRS}
-    core
-)
-target_link_directories(core PUBLIC ${SIMAVR_LIBRARY_DIRS})
-if(APPLE)
-    target_link_directories(core PUBLIC "${HOMEBREW_LIBELF_PREFIX}/lib")
-endif()
-target_link_libraries(core PUBLIC ${SIMAVR_LIBRARIES} m Threads::Threads)
+target_include_directories(core PUBLIC core)
+target_link_libraries(core PUBLIC simavr m Threads::Threads)
 if(NOT APPLE)
     # openpty() needs -lutil on Linux; on macOS it's already in libc.
     target_link_libraries(core PUBLIC util)
 endif()
 target_compile_options(core PRIVATE
-    -Wall -Wextra -Wno-missing-field-initializers ${SIMAVR_CFLAGS_OTHER}
+    -Wall -Wextra -Wno-missing-field-initializers
 )
 
 # GUI front end (Dear ImGui + GLFW + OpenGL3).
-pkg_check_modules(GLFW REQUIRED glfw3)
+pkg_check_modules(GLFW REQUIRED IMPORTED_TARGET glfw3)
 find_package(OpenGL REQUIRED)
 
 set(IMGUI_DIR third_party/imgui)
@@ -70,13 +87,11 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
-    ${GLFW_INCLUDE_DIRS}
 )
-target_link_directories(imgui PUBLIC ${GLFW_LIBRARY_DIRS})
-target_link_libraries(imgui PUBLIC ${GLFW_LIBRARIES} OpenGL::GL)
+target_link_libraries(imgui PUBLIC PkgConfig::GLFW OpenGL::GL)
 
 add_executable(arbotix_gui gui/main.cpp)
-target_link_libraries(arbotix_gui PRIVATE core imgui Threads::Threads)
+target_link_libraries(arbotix_gui PRIVATE core imgui)
 target_compile_options(arbotix_gui PRIVATE -Wall -Wextra)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

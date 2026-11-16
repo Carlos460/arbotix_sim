@@ -1,3 +1,6 @@
 [submodule "third_party/imgui"]
 	path = third_party/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "third_party/simavr"]
+	path = third_party/simavr
+	url = https://github.com/buserror/simavr.git
